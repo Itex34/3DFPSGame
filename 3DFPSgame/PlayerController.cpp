@@ -100,66 +100,6 @@ void PlayerController::update(GLFWwindow* window, double deltaTime) {
 	position.z = playerPos.GetZ();
 }
 
-
-
-/*
-void PlayerController::update(GLFWwindow* window, double deltaTime) {
-    JPH::BodyInterface& bodyInterface = physics.getPhysicsSystem().GetBodyInterface();
-
-    // Get current position
-    JPH::RVec3 currentPos = bodyInterface.GetPosition(playerBodyID);
-
-    // Prepare movement input
-    glm::vec3 inputVelocity(0.0f);
-
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        inputVelocity += camera.XZfront;
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        inputVelocity -= camera.XZfront;
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        inputVelocity -= glm::normalize(glm::cross(camera.front, camera.up));
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        inputVelocity += glm::normalize(glm::cross(camera.front, camera.up));
-
-    // Normalize to avoid diagonal speed boost
-    if (glm::length(inputVelocity) > 0.0f)
-        inputVelocity = glm::normalize(inputVelocity) * moveSpeed;
-
-    // Gravity
-    static float verticalVelocity = 0.0f;
-    verticalVelocity += physics.getPhysicsSystem().GetGravity().GetY() * deltaTime; // apply gravity
-
-    // Jump
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && isGrounded()) {
-        verticalVelocity = jumpHeight;
-    }
-
-    // Final movement vector
-    glm::vec3 finalMove(
-        inputVelocity.x,
-        verticalVelocity,
-        inputVelocity.z
-    );
-
-    // Predict new position
-    JPH::Vec3 displacement = JPH::Vec3(finalMove.x, finalMove.y, finalMove.z) * deltaTime;
-    JPH::RVec3 newPos = currentPos + displacement;
-	JPH::Quat rotation = bodyInterface.GetRotation(playerBodyID);   
-
-    bodyInterface.MoveKinematic(playerBodyID, newPos, rotation, deltaTime);
-
-    // Update the ground sensor under the player
-    JPH::RVec3 sensorPos = newPos - JPH::Vec3(0, mPlayerHeight * 0.5f + 0.05f, 0);
-    bodyInterface.SetPosition(groundSensorBodyID, sensorPos, JPH::EActivation::DontActivate);
-
-    // Update camera
-    camera.position = glm::vec3(newPos.GetX(), newPos.GetY(), newPos.GetZ());
-
-    position.x = newPos.GetX();
-    position.y = newPos.GetY();
-    position.z = newPos.GetZ();
-}
-*/
 void PlayerController::processMouse(double xpos, double ypos) {
 
     if (firstMouse) {
