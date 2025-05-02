@@ -3,6 +3,7 @@
 
 #include "Camera.hpp"
 #include "Physics.hpp"
+#include "Gun.hpp"
 
 #include <glm/glm.hpp>
 #include <GLFW/glfw3.h>
@@ -29,18 +30,23 @@ public:
 
     glm::vec3 position = startPos;
     glm::mat4 getViewMatrix() const;
+
+    float currentFov = 80.0f;
 private:
     
     Physics& physics;
     Camera camera;
+    Gun gun;
 
     float moveSpeed = 2.5f;
+	float forwardSpeed = 2.5f;
+	float runSpeed = 5.0f;
+
     float mouseSensitivity = 0.1f;
 
     bool isJumping = false;
-    float jumpHeight = 1.0f;
+    float jumpVelocity;
 
-    int threadCount = -1;
 
     JPH::BodyID playerBodyID;
 	JPH::BodyID groundSensorBodyID;
@@ -51,6 +57,10 @@ private:
     float mPlayerRadius = 0.3f; // meters
 
     float mGroundSensorRadius = 0.1f; // meters
+
+	float walkFov = 80.0f;
+    float runningFov = 83.0f;
+    float runningFovMultiplier = 1.0f;
 };
 
 #endif // PLAYERCONTROLLER_HPP

@@ -3,20 +3,15 @@
 PlayerController::PlayerController(glm::vec3 startPosi, Physics& inPhysics)
     : startPos(startPosi),
     isJumping(false),
-    jumpHeight(1.0f),
+    jumpVelocity(4.0f),
     camera(startPosi),
-    physics(inPhysics){
+    physics(inPhysics),
+    gun(inPhysics, playerBodyID, 0.2f, 3.0f){
 
-    //Get the BodyInterface
     JPH::BodyInterface& bodyInterface = physics.getPhysicsSystem().GetBodyInterface();
 
-    //Create a collision shape
-
-
     mPlayerShape = new JPH::CapsuleShape(mPlayerHeight * 0.5f, mPlayerRadius);
-	JPH::ShapeRefC groundSensorShape = new JPH::SphereShape(mGroundSensorRadius);
 
-    //Create body settings
     JPH::BodyCreationSettings playerBodySettings(
         mPlayerShape,
         JPH::RVec3(startPos.x, startPos.y, startPos.z),
@@ -24,80 +19,131 @@ PlayerController::PlayerController(glm::vec3 startPosi, Physics& inPhysics)
         JPH::EMotionType::Dynamic,
         Layers::MOVING // Use the moving layer
     );
-
-    JPH::BodyCreationSettings groundSensorSettings(
-        groundSensorShape,
-        JPH::RVec3(startPos.x, startPos.y, startPos.z),
-        JPH::Quat::sIdentity(),
-        JPH::EMotionType::Kinematic,
-        Layers::MOVING
-    );
-
-	//Set the ground sensor to be a trigger
-    groundSensorSettings.mIsSensor = true;
-    //Make player not rotate
     playerBodySettings.mAllowSleeping = false;
     playerBodySettings.mMotionQuality = JPH::EMotionQuality::LinearCast;
-    playerBodySettings.mInertiaMultiplier = 0.0f; // Disable rotations
+    playerBodySettings.mInertiaMultiplier = 0.0f; // disable rotations
 
-    // Create and add the bodies to the world
+
     playerBodyID = bodyInterface.CreateAndAddBody(playerBodySettings, JPH::EActivation::Activate);
-    groundSensorBodyID = bodyInterface.CreateAndAddBody(groundSensorSettings, JPH::EActivation::Activate);
 
 }
 
 
 bool PlayerController::isGrounded() {
-    return true;
+	JPH::RMat44 comTransform = physics.getPhysicsSystem().GetBodyInterface().GetCenterOfMassTransform(playerBodyID);
+
+    JPH::Vec3 castDir = JPH::Vec3(0, -(mPlayerHeight * 0.5f + 0.1f), 0);
+
+    JPH::RShapeCast shapeCast(
+        mPlayerShape,
+        JPH::Vec3::sReplicate(1.0f),
+        comTransform,
+        castDir
+    );
+
+	JPH::ShapeFilter shapeFilter;
+	JPH::IgnoreSingleBodyFilter bodyFilter(playerBodyID);// ignore the player body itself
+	JPH::ObjectLayerFilter objectLayerFilter;
+	JPH::BroadPhaseLayerFilter broadPhaseLayerFilter;
+
+    
+    JPH::ClosestHitCollisionCollector<JPH::CastShapeCollector> collector;
+	JPH::ShapeCastSettings settings;
+    JPH::ShapeCastResult result;
+
+    physics.getPhysicsSystem().GetNarrowPhaseQuery().CastShape(
+        shapeCast,
+        settings,
+        JPH::Vec3::sZero(),
+        collector,
+        broadPhaseLayerFilter,
+        objectLayerFilter,
+        bodyFilter, 
+        shapeFilter
+    );
+    
+    if (collector.HadHit()) {
+        float hitFraction = collector.mHit.mFraction;
+        return hitFraction < 0.05f; // only count as grounded if it's very close
+    }
+
+    return false;
 }
 
 void PlayerController::update(GLFWwindow* window, double deltaTime) {
-    JPH::BodyInterface& bodyInterface = physics.getPhysicsSystem().GetBodyInterface();
 
+    JPH::BodyInterface& bodyInterface = physics.getPhysicsSystem().GetBodyInterface();
     JPH::Vec3 currentVelocity = bodyInterface.GetLinearVelocity(playerBodyID);
+
+
     glm::vec3 inputVelocity(0.0f);
 
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        inputVelocity += camera.XZfront;
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        inputVelocity -= camera.XZfront;
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        inputVelocity -= glm::normalize(glm::cross(camera.front, camera.up));
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        inputVelocity += glm::normalize(glm::cross(camera.front, camera.up));
 
-    //avoid diagonal speed boost
-    if (glm::length(inputVelocity) > 0.0f)
-        inputVelocity = glm::normalize(inputVelocity) * moveSpeed;
+
+    glm::vec3 moveDir(0.0f);
+
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        moveDir += camera.XZfront;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        moveDir -= camera.XZfront;
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        moveDir -= glm::normalize(glm::cross(camera.front, camera.up));
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        moveDir += glm::normalize(glm::cross(camera.front, camera.up));
+
+    if (glm::length(moveDir) > 0.0f)
+        moveDir = glm::normalize(moveDir);
+
+    float currentSpeed = (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) ? runSpeed : moveSpeed;
+
+    float targetFov = (currentSpeed == runSpeed) ? runningFov * runningFovMultiplier : walkFov;
+    float fovSmoothSpeed = 10.0f;
+    currentFov += (targetFov - currentFov) * fovSmoothSpeed * deltaTime;
+
+    inputVelocity = moveDir * currentSpeed;
 
     JPH::Vec3 inputVel(inputVelocity.x, currentVelocity.GetY(), inputVelocity.z);
 
-    //bodyInterface.AddForce(playerBodyID, inputVel, JPH::EActivation::Activate);
+    bool grounded = isGrounded();
+    bool spacePressed = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
 
-    bodyInterface.SetLinearVelocity(playerBodyID, inputVel);
 
-    // Jump
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !isJumping) {
-        bodyInterface.SetLinearVelocity(playerBodyID, JPH::Vec3(
-            currentVelocity.GetX(),
-            jumpHeight,
-            currentVelocity.GetZ()
-        ));
-        isJumping = true;
+    if (spacePressed && grounded) {
+        inputVel.SetY(jumpVelocity);
     }
 
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_RELEASE)
-        isJumping = false;
+    if (grounded && !spacePressed) {
+        inputVel.SetY(0); // Cancel falling when on ground, doesn't entirely prevent the player from slowly falling through the florr until Y = 0.3
 
-    // Update the camera position from the body
+        //disable gravity when grounded to fix the problem
+		physics.getPhysicsSystem().GetBodyInterface().SetGravityFactor(playerBodyID, 0.0f);
+    }
+    else {
+		physics.getPhysicsSystem().GetBodyInterface().SetGravityFactor(playerBodyID, 1.0f);
+    }
+
+
+    //apply the velocity
+    bodyInterface.SetLinearVelocity(playerBodyID, inputVel);
+
     JPH::RVec3 playerPos = bodyInterface.GetPosition(playerBodyID);
-    JPH::RVec3 sensorPos = playerPos - JPH::Vec3(0, mPlayerHeight * 0.5f + 0.05f, 0); // a bit under the feet
-    bodyInterface.SetPosition(groundSensorBodyID, sensorPos, JPH::EActivation::DontActivate);
+
+    //make the camera follow the player
     camera.position = glm::vec3(playerPos.GetX(), playerPos.GetY(), playerPos.GetZ());
 
-	position.x = playerPos.GetX();
-	position.y = playerPos.GetY();
-	position.z = playerPos.GetZ();
+    position.x = playerPos.GetX();
+    position.y = playerPos.GetY();
+    position.z = playerPos.GetZ();
+
+
+	if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
+        gun.reload();
+	}
+
+    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
+        gun.requestFire();
+    }
+	gun.update(camera.position, camera.front, physics.floorBodyID, deltaTime);
 }
 
 void PlayerController::processMouse(double xpos, double ypos) {

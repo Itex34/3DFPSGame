@@ -15,12 +15,13 @@
 #include <Jolt/Physics/Body/BodyActivationListener.h>
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
 #include <Jolt/Physics/Collision/ShapeCast.h>
-
+#include <Jolt/Physics/Collision/RayCast.h> 
+#include <Jolt/Physics/Collision/CastResult.h>
+#include <Jolt/Physics/Collision/CollisionCollectorImpl.h>
 #include <iostream>
 #include <cstdarg>
 #include <thread>
 
-// Layer setup
 namespace Layers
 {
     static constexpr JPH::ObjectLayer NON_MOVING = 0;
@@ -37,8 +38,9 @@ public:
     void update(float deltaTime);
 
     JPH::PhysicsSystem& getPhysicsSystem() { return mPhysicsSystem; }
+
+    JPH::BodyID floorBodyID;
 private:
-    // Jolt objects that must stay alive
     std::unique_ptr<JPH::TempAllocatorImpl> mTempAllocator;
     std::unique_ptr<JPH::JobSystemThreadPool> mJobSystem;
     JPH::PhysicsSystem mPhysicsSystem;
@@ -49,7 +51,6 @@ private:
     class BPLayerInterfaceImpl;
     class ObjectVsBroadPhaseLayerFilterImpl;
 
-    // Hold instances so their memory doesn't disappear
     std::unique_ptr<MyBodyActivationListener> mBodyActivationListener;
     std::unique_ptr<MyContactListener> mContactListener;
     std::unique_ptr<ObjectLayerPairFilterImpl> mObjectLayerPairFilter;

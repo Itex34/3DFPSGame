@@ -165,12 +165,12 @@ Physics::Physics()
 
     // Create the floor
     BodyInterface& bodyInterface = mPhysicsSystem.GetBodyInterface();
-    BoxShapeSettings floorShapeSettings(Vec3(100.0f, 1.0f, 100.0f));
+    BoxShapeSettings floorShapeSettings(Vec3(1000.0f, 1.0f, 1000.0f));
     floorShapeSettings.SetEmbedded();
     ShapeRefC floorShape = floorShapeSettings.Create().Get();
     BodyCreationSettings floorSettings(floorShape, RVec3(0.0_r, -1.0_r, 0.0_r), Quat::sIdentity(), EMotionType::Static, Layers::NON_MOVING);
-    Body* floor = bodyInterface.CreateBody(floorSettings);
-    bodyInterface.AddBody(floor->GetID(), EActivation::DontActivate);
+
+	floorBodyID = bodyInterface.CreateAndAddBody(floorSettings, EActivation::DontActivate);
 
     mPhysicsSystem.OptimizeBroadPhase();
 }

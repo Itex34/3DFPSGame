@@ -8,7 +8,13 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
 
-add_executable(3DFPSgame "main.cpp" "Camera.cpp" "Model.cpp" "Physics.cpp" "PlayerController.cpp")
+add_executable(3DFPSgame 
+    "main.cpp" 
+    "Camera.cpp" 
+    "Model.cpp" 
+    "Physics.cpp" 
+    "PlayerController.cpp" 
+    "Gun.cpp" "Shader.cpp")
 
 find_package(glfw3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
